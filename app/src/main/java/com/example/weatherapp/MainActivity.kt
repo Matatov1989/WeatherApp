@@ -13,6 +13,10 @@ import android.os.Bundle
 import android.os.Looper
 import android.provider.Settings
 import android.util.Log
+import android.view.Menu
+import android.view.MenuItem
+import android.widget.ImageView
+import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import com.example.weatherapp.models.WeatherResponse
@@ -27,15 +31,32 @@ import com.karumi.dexter.PermissionToken
 import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 import retrofit.*
+import java.text.SimpleDateFormat
+import java.util.*
 
 class MainActivity : AppCompatActivity() {
 
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
     private var mProgressDialog: Dialog? = null
 
+    private lateinit var tvMain: TextView
+    private lateinit var tvMainDescription: TextView
+    private lateinit var tvTemp: TextView
+    private lateinit var tvHumidity: TextView
+    private lateinit var tvMin: TextView
+    private lateinit var tvMax: TextView
+    private lateinit var tvSpeed: TextView
+    private lateinit var tvName: TextView
+    private lateinit var tvCountry: TextView
+    private lateinit var tvSunriseTime: TextView
+    private lateinit var tvSunsetTime: TextView
+    private lateinit var ivMain: ImageView
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        iniView()
 
         mFusedLocationClient = LocationServices.getFusedLocationProviderClient(this)
 
@@ -78,6 +99,21 @@ class MainActivity : AppCompatActivity() {
                 }).onSameThread().check()
         }
 
+    }
+
+    private fun iniView() {
+        tvMain = findViewById(R.id.tvMain)
+        tvMainDescription = findViewById(R.id.tvMainDescription)
+        tvTemp = findViewById(R.id.tvTemp)
+        tvHumidity = findViewById(R.id.tvHumidity)
+        tvMin = findViewById(R.id.tvMin)
+        tvMax = findViewById(R.id.tvMax)
+        tvSpeed = findViewById(R.id.tvSpeed)
+        tvName = findViewById(R.id.tvName)
+        tvCountry = findViewById(R.id.tvCountry)
+        tvSunriseTime = findViewById(R.id.tvSunriseTime)
+        tvSunsetTime = findViewById(R.id.tvSunsetTime)
+        ivMain = findViewById(R.id.ivMain)
     }
 
     private fun isLocationEnabled(): Boolean {
@@ -136,17 +172,17 @@ class MainActivity : AppCompatActivity() {
                     hideProgressDialog()
                     if (response!!.isSuccess) {
                         val weatherList: WeatherResponse = response.body()
-                        Log.i("RESPONSE_RESULT", "$weatherList")
+                        setupUI(weatherList)
                     } else {
                         when (response.code()) {
                             400 -> {
-                                Log.i("RESPONSE_ERROR", "Bad Connection")
+                                Log.e("RESPONSE_ERROR", "Bad Connection")
                             }
                             404 -> {
-                                Log.i("RESPONSE_ERROR", "Not Found")
+                                Log.e("RESPONSE_ERROR", "Not Found")
                             }
                             else -> {
-                                Log.i("RESPONSE_ERROR", "Generic Error")
+                                Log.e("RESPONSE_ERROR", "Generic Error")
                             }
                         }
                     }
@@ -193,6 +229,75 @@ class MainActivity : AppCompatActivity() {
     private fun hideProgressDialog() {
         mProgressDialog?.let {
             it.dismiss()
+        }
+    }
+
+    private fun setupUI(weatherList: WeatherResponse) {
+        for (i in weatherList.weather.indices) {
+
+            Log.i("Weather_Name", weatherList.weather.toString())
+
+            tvMain.text = weatherList.weather[i].main
+            tvMainDescription.text = weatherList.weather[i].description
+            tvTemp.text = weatherList.main.temp.toString() + getUnit(application.resources.configuration.locales.toString())
+            tvHumidity.text = weatherList.main.humidity.toString() + " per cent"
+            tvMin.text = weatherList.main.temp_min.toString() + " min"
+            tvMax.text = weatherList.main.temp_max.toString() + " max"
+            tvSpeed.text = weatherList.wind.speed.toString()
+            tvName.text = weatherList.name
+            tvCountry.text = weatherList.sys.country
+            tvSunriseTime.text = unixTime(weatherList.sys.sunrise.toLong())
+            tvSunsetTime.text = unixTime(weatherList.sys.sunset.toLong())
+
+            // Here we update the main icon
+            when (weatherList.weather[i].icon) {
+                "01d" -> ivMain.setImageResource(R.drawable.sunny)
+                "02d" -> ivMain.setImageResource(R.drawable.cloud)
+                "03d" -> ivMain.setImageResource(R.drawable.cloud)
+                "04d" -> ivMain.setImageResource(R.drawable.cloud)
+                "04n" -> ivMain.setImageResource(R.drawable.cloud)
+                "10d" -> ivMain.setImageResource(R.drawable.rain)
+                "11d" -> ivMain.setImageResource(R.drawable.storm)
+                "13d" -> ivMain.setImageResource(R.drawable.snowflake)
+                "01n" -> ivMain.setImageResource(R.drawable.cloud)
+                "02n" -> ivMain.setImageResource(R.drawable.cloud)
+                "03n" -> ivMain.setImageResource(R.drawable.cloud)
+                "10n" -> ivMain.setImageResource(R.drawable.cloud)
+                "11n" -> ivMain.setImageResource(R.drawable.rain)
+                "13n" -> ivMain.setImageResource(R.drawable.snowflake)
+            }
+        }
+    }
+
+    private fun getUnit(value: String): String? {
+        Log.i("unitttttt", value)
+        var value = "°C"
+        if ("US" == value || "LR" == value || "MM" == value) {
+            value = "°F"
+        }
+        return value
+    }
+
+    private fun unixTime(timex: Long): String? {
+        val date = Date(timex * 1000L)
+        @SuppressLint("SimpleDateFormat") val sdf = SimpleDateFormat("HH:mm")
+        sdf.timeZone = TimeZone.getDefault()
+        return sdf.format(date)
+    }
+
+    override fun onCreateOptionsMenu(menu: Menu?): Boolean {
+        menuInflater.inflate(R.menu.manu_main, menu)
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+
+        return when (item.itemId) {
+            R.id.actionRefresh -> {
+                requestLocationData()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
     }
 }

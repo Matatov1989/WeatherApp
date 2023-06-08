@@ -1,6 +1,7 @@
 package com.example.weatherapp
 
 import android.annotation.SuppressLint
+import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -30,6 +31,7 @@ import retrofit.*
 class MainActivity : AppCompatActivity() {
 
     private lateinit var mFusedLocationClient: FusedLocationProviderClient
+    private var mProgressDialog: Dialog? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -120,6 +122,8 @@ class MainActivity : AppCompatActivity() {
             val service: WeatherService =
                 retrofit.create<WeatherService>(WeatherService::class.java)
 
+            showCustomProgressDialog()
+
             val listCall: Call<WeatherResponse> = service.getWeather(
                 lat = latitude,
                 lon = longitude,
@@ -129,6 +133,7 @@ class MainActivity : AppCompatActivity() {
 
             listCall.enqueue(object : Callback<WeatherResponse> {
                 override fun onResponse(response: Response<WeatherResponse>?, retrofit: Retrofit?) {
+                    hideProgressDialog()
                     if (response!!.isSuccess) {
                         val weatherList: WeatherResponse = response.body()
                         Log.i("RESPONSE_RESULT", "$weatherList")
@@ -148,6 +153,7 @@ class MainActivity : AppCompatActivity() {
                 }
 
                 override fun onFailure(t: Throwable?) {
+                    hideProgressDialog()
                     Log.e("RESPONSE_FAILURE", t!!.message.toString())
                 }
             })
@@ -176,5 +182,17 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("Cancel") { dialog, _ ->
                 dialog.dismiss()
             }
+    }
+
+    private fun showCustomProgressDialog() {
+        mProgressDialog = Dialog(this)
+        mProgressDialog!!.setContentView(R.layout.dialog_custom_progress)
+        mProgressDialog!!.show()
+    }
+
+    private fun hideProgressDialog() {
+        mProgressDialog?.let {
+            it.dismiss()
+        }
     }
 }
